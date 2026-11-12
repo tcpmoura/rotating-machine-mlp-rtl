@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.tcl text eol=lf
+*.v text eol=lf
+*.sv text eol=lf
+*.mem text eol=lf
