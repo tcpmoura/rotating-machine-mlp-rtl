@@ -11,6 +11,6 @@ def main():
     meta=dict(config=MODEL['CONFIG'],columns=MODEL['FEATURE_COLUMNS'],mean=MODEL['MEAN'],scale=MODEL['SCALE']);scales=MODEL['SCALES']
     d=np.load(args.features);x=d[f"X{meta['config']['window']}"][:,meta['columns']]
     z=(x-np.array(meta['mean']))/np.array(meta['scale']);args.output.parent.mkdir(parents=True,exist_ok=True)
-    write_vectors(args.output,q(z,scales['input_frac']),read_rom(ROOT/'model/weights_rom.mem'),scales)
+    write_vectors(args.output,q(z,scales['input_frac'],MODEL['DATA_W']),read_rom(ROOT/'model/weights_rom.mem',MODEL['DATA_W']),scales,MODEL['DATA_W'],MODEL['ACC_W'])
     print(f'{len(z)} vectors written to {args.output}')
 if __name__=='__main__':main()

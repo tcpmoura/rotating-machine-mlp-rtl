@@ -54,7 +54,8 @@ module ula_neural #(
     localparam signed [ACC_W-1:0] ROUND_HALF = 1 << (HIDDEN_SHIFT-1);
     wire signed [ACC_W-1:0] relu_shifted = (relu_full + ROUND_HALF) >>> HIDDEN_SHIFT;
 
-    // Saturação em +127
-    assign relu_out = (relu_shifted > 24'sd127) ? 8'sd127 : $signed(relu_shifted[DATA_W-1:0]);
+    // Saturation at the maximum positive value for DATA_W.
+    localparam signed [ACC_W-1:0] MAX_HIDDEN = (1 << (DATA_W-1)) - 1;
+    assign relu_out = (relu_shifted > MAX_HIDDEN) ? $signed(MAX_HIDDEN[DATA_W-1:0]) : $signed(relu_shifted[DATA_W-1:0]);
 
 endmodule

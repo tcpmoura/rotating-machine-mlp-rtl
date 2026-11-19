@@ -39,7 +39,7 @@ module datapath #(
     input wire signed [ACC_W-1:0] acc_out,         // valor bruto acumulado na 2a camada
 
     output reg [2:0] class_id,                     // resultado do diagnostico de falahas do chip (0..4)
-    output reg signed [DATA_W-1:0] confidence,     // exporta o nível de confiança
+    output reg signed [7:0] confidence,     // exporta o nível de confiança
     output wire signed [DATA_W-1:0] hidden_to_ula  // dados dos 8 neurônios ocultos para a ULA
 );
     // variáveis para indexar laços de repetição
@@ -98,7 +98,7 @@ module datapath #(
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             class_id <= 3'b000;
-            confidence <= {DATA_W{1'b0}};
+            confidence <= 8'sd0;
         end else if (do_argmax) begin
             max_val = output_acc[0]; //primeiramente assume a classe 0 como vencedora
             max_idx = 3'd0;
@@ -120,7 +120,7 @@ module datapath #(
             end else if (conf_calc < -24'sd128) begin
                 confidence <= 8'sh80;
             end else begin
-                confidence <= conf_calc[DATA_W-1:0];
+                confidence <= conf_calc[7:0];
             end
 
         end

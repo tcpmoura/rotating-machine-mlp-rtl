@@ -1,19 +1,21 @@
 `timescale 1ns/1ps
 module tb_core_stream;
- parameter INPUT_FRAC=5,W1_FRAC=3,W2_FRAC=3,HIDDEN_FRAC=1;
+ parameter DATA_W=16,ACC_W=36;
+ parameter INPUT_FRAC=13,W1_FRAC=12,W2_FRAC=12,HIDDEN_FRAC=11;
  reg clk=0; always #25 clk=~clk;
  reg rst_n=0,in_valid=0,out_ready=0,run=0;
- reg signed [7:0] x[0:3];
+ reg signed [DATA_W-1:0] x[0:3];
  wire in_ready,out_valid;
  wire [2:0] cls;wire signed [7:0] score;
  wire ok,warn,crit,halt;
- `DUT #(.INPUT_FRAC(INPUT_FRAC),.W1_FRAC(W1_FRAC),.W2_FRAC(W2_FRAC),.HIDDEN_FRAC(HIDDEN_FRAC)) dut(
+ `DUT #(.DATA_W(DATA_W),.ACC_W(ACC_W),.INPUT_FRAC(INPUT_FRAC),.W1_FRAC(W1_FRAC),.W2_FRAC(W2_FRAC),.HIDDEN_FRAC(HIDDEN_FRAC)) dut(
  .clk(clk),.rst_n(rst_n),.in_valid(in_valid),.in_ready(in_ready),.out_ready(out_ready),.out_valid(out_valid),
  .feat_0(x[0]),.feat_1(x[1]),.feat_2(x[2]),.feat_3(x[3]),.class_id(cls),.confidence(score),
  .led_ok(ok),.led_warn(warn),.led_crit(crit),.halt(halt),.reserved_unused());
- reg [7:0] inputs[0:28079][0:3],hidden[0:28079][0:7],classes[0:28079],scores[0:28079];
- reg [23:0] outputs[0:28079][0:4];
- reg [23:0] v[0:18];
+ reg [DATA_W-1:0] inputs[0:28079][0:3],hidden[0:28079][0:7];
+ reg [7:0] classes[0:28079],scores[0:28079];
+ reg [ACC_W-1:0] outputs[0:28079][0:4];
+ reg [ACC_W-1:0] v[0:18];
  integer accepted_at[0:28079];
  integer fd,n=0,r,i,cycle=0,sent=0,received=0,mode=0;
  integer last_accept=-1,ii_min=100000000,ii_max=0,lat_min=100000000,lat_max=0,lat;
@@ -26,6 +28,7 @@ module tb_core_stream;
    while(!$feof(fd)) begin
      r=$fscanf(fd,"%h %h %h %h %h %h %h %h %h %h %h %h %h %h %h %h %h %h %h\n",
 v[0],v[1],v[2],v[3],v[4],v[5],v[6],v[7],v[8],v[9],v[10],v[11],v[12],v[13],v[14],v[15],v[16],v[17],v[18]);
+     if(n>=28080)$fatal(1,"too many vectors");
      for(integer j=0;j<4;j=j+1)inputs[n][j]=v[j];
      for(integer j=0;j<8;j=j+1)hidden[n][j]=v[4+j];
      for(integer j=0;j<5;j=j+1)outputs[n][j]=v[12+j];

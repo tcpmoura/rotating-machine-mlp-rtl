@@ -7,19 +7,19 @@ from pathlib import Path
 import numpy as np
 
 
-def read_rom(path):
+def read_rom(path,data_w=8):
     values=[]
     # Original ROM comments use Windows-1252; hexadecimal payload is ASCII.
     for line in Path(path).read_text(encoding='cp1252').splitlines():
         for token in line.split('//')[0].split():
             v=int(token,16)
-            values.append(v-256 if v>127 else v)
-    if len(values)!=85: raise ValueError(f'Expected 85 ROM bytes, got {len(values)}')
+            values.append(v-(1<<data_w) if v>=(1<<(data_w-1)) else v)
+    if len(values)!=85: raise ValueError(f'Expected 85 ROM words, got {len(values)}')
     r=np.array(values,dtype=np.int64)
     return r[:32].reshape(8,4).T,r[32:40],r[40:80].reshape(5,8).T,r[80:85]
 
 
-def infer(x,params,scales=None):
+def infer(x,params,scales=None,data_w=8):
     w1,b1,w2,b2=params
     scales=scales or dict(input_frac=5,w1_frac=5,w2_frac=5,hidden_frac=5)
     input_scale=1<<scales['input_frac'];hidden_scale=1<<scales['hidden_frac']
@@ -28,7 +28,7 @@ def infer(x,params,scales=None):
     x=np.asarray(x,dtype=np.int64)
     a1=x@w1+b1*input_scale
     if hidden_shift<1:raise ValueError('Hidden shift must be positive')
-    hidden=np.minimum((np.maximum(a1,0)+(1<<(hidden_shift-1)))>>hidden_shift,127)
+    hidden=np.minimum((np.maximum(a1,0)+(1<<(hidden_shift-1)))>>hidden_shift,(1<<(data_w-1))-1)
     output=hidden@w2+b2*hidden_scale
     cls=output.argmax(axis=-1)
     score=np.take_along_axis(output,cls[...,None],axis=-1)[...,0]
@@ -38,13 +38,13 @@ def infer(x,params,scales=None):
     return hidden,output,cls,confidence
 
 
-def write_vectors(path,x,params,scales=None):
-    h,o,c,s=infer(x,params,scales)
+def write_vectors(path,x,params,scales=None,data_w=8,acc_w=24):
+    h,o,c,s=infer(x,params,scales,data_w)
     with Path(path).open('w',encoding='ascii') as f:
         for row,hr,orr,cr,sr in zip(x,h,o,c,s):
-            tokens=[*(f'{int(v)&255:02x}' for v in row),
-                    *(f'{int(v)&255:02x}' for v in hr),
-                    *(f'{int(v)&0xffffff:06x}' for v in orr),
+            tokens=[*(f'{int(v)&((1<<data_w)-1):x}' for v in row),
+                    *(f'{int(v)&((1<<data_w)-1):x}' for v in hr),
+                    *(f'{int(v)&((1<<acc_w)-1):x}' for v in orr),
                     f'{int(cr):02x}',f'{int(sr)&255:02x}']
             f.write(' '.join(tokens)+'\n')
 

@@ -37,7 +37,7 @@
 
 
     output wire [2:0]  class_id,
-    output wire signed [DATA_W-1:0] confidence,
+    output wire signed [7:0] confidence,
     output wire        led_ok,
     output wire        led_warn,
     output wire        led_crit,
@@ -87,7 +87,7 @@
 
 
     wire [2:0]        dp_class_id;
-    wire signed [DATA_W-1:0] dp_confidence;
+    wire signed [7:0] dp_confidence;
 
 
     wire              uart_start;

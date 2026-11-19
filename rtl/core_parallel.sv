@@ -1,14 +1,15 @@
 
-// Standalone parallel core: same INT8 arithmetic and alarms, no UART.
+// Standalone parallel core: parameterized signed arithmetic and alarms, no UART.
 // Output stays valid until consumed. No claim of algorithmic novelty.
 module core_parallel #(
+  parameter DATA_W=8, ACC_W=24,
   parameter INPUT_FRAC=5,W1_FRAC=4,W2_FRAC=3,HIDDEN_FRAC=2,
   parameter CLK_FREQ=50000000,BAUD_RATE=9600
 )(
   input wire clk,rst_n,in_valid,
   output wire in_ready,out_valid,
   input wire out_ready,
-  input wire signed [7:0] feat_0,feat_1,feat_2,feat_3,
+  input wire signed [DATA_W-1:0] feat_0,feat_1,feat_2,feat_3,
   output reg [2:0] class_id,
   output reg signed [7:0] confidence,
   output reg led_ok,led_warn,led_crit,halt,
@@ -16,16 +17,16 @@ module core_parallel #(
 );
   localparam HS=INPUT_FRAC+W1_FRAC-HIDDEN_FRAC;
   localparam CS=HIDDEN_FRAC+W2_FRAC-5;
-  reg signed [7:0] weights[0:127];
+  reg signed [DATA_W-1:0] weights[0:127];
   integer init_i;
   initial begin
     for(init_i=0;init_i<128;init_i=init_i+1) weights[init_i]=0;
     $readmemh("weights_rom.mem",weights,0,84);
   end
-  reg signed [7:0] inputs[0:3];
-  reg signed [7:0] hidden_out[0:7];
-  reg signed [23:0] output_acc[0:4];
-  wire signed [23:0] l1_sum[0:7], l2_sum[0:4];
+  reg signed [DATA_W-1:0] inputs[0:3];
+  reg signed [DATA_W-1:0] hidden_out[0:7];
+  reg signed [ACC_W-1:0] output_acc[0:4];
+  wire signed [ACC_W-1:0] l1_sum[0:7], l2_sum[0:4];
   genvar h,o;
   generate for(h=0;h<8;h=h+1) begin: l1
     assign l1_sum[h]=$signed(inputs[0])*$signed(weights[4*h])
@@ -45,12 +46,14 @@ module core_parallel #(
                     +$signed(hidden_out[7])*$signed(weights[47+8*o])
                     +($signed(weights[80+o]) <<< HIDDEN_FRAC);
   end endgenerate
-  function automatic signed [7:0] relu;
-    input signed [23:0] acc;
-    reg signed [23:0] value;
+  localparam signed [ACC_W-1:0] MAX_HIDDEN = (1 << (DATA_W-1)) - 1;
+  localparam signed [ACC_W-1:0] ROUND_HALF = 1 << (HS-1);
+  function automatic signed [DATA_W-1:0] relu;
+    input signed [ACC_W-1:0] acc;
+    reg signed [ACC_W-1:0] value;
     begin
-      value=acc<0 ? 0 : ((acc+(24'sd1<<(HS-1)))>>>HS);
-      relu=value>127 ? 8'sd127 : value[7:0];
+      value=acc<0 ? 0 : ((acc+ROUND_HALF)>>>HS);
+      relu=value>MAX_HIDDEN ? MAX_HIDDEN[DATA_W-1:0] : value[DATA_W-1:0];
     end
   endfunction
   reg [2:0] state;
@@ -61,7 +64,7 @@ module core_parallel #(
   assign reserved_unused=1'b0;
   wire do_argmax=(state==3);
   integer i;
-  reg signed [23:0] max_value,score;
+  reg signed [ACC_W-1:0] max_value,score;
   reg [2:0] max_index;
   always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin

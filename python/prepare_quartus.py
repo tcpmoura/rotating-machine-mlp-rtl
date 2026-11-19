@@ -14,13 +14,13 @@ set_global_assignment -name SEARCH_PATH ../../../rtl
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_global_assignment -name SDC_FILE mlp.sdc
 set_global_assignment -name SEED 1
-set_global_assignment -name NUM_PARALLEL_PROCESSORS 4
+set_global_assignment -name NUM_PARALLEL_PROCESSORS 2
 set_location_assignment PIN_M9 -to clk
 set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to clk
 '''
     for port in ['rst_n','in_valid','in_ready','out_valid','out_ready','feat_0*','feat_1*','feat_2*','feat_3*','class_id*','confidence*','led_ok','led_warn','led_crit','halt','reserved_unused']:
         text+=f'set_instance_assignment -name VIRTUAL_PIN ON -to {port}\n'
-    for k,v in MODEL['SCALES'].items():text+=f'set_parameter -name {k.upper()} {v}\n'
+    for k,v in dict(MODEL['SCALES'],DATA_W=MODEL['DATA_W'],ACC_W=MODEL['ACC_W']).items():text+=f'set_parameter -name {k.upper()} {v}\n'
     (d/'mlp.qsf').write_text(text)
     (d/'mlp.qpf').write_text('QUARTUS_VERSION = "20.1"\nPROJECT_REVISION = "mlp"\n')
     (d/'mlp.sdc').write_text('''create_clock -name clk -period 50.000 [get_ports clk]
